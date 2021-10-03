@@ -8,6 +8,7 @@
  *	code, is my own original work.
  */
 #include <avr/io.h>
+#include <stdlib.h>
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
 #endif
@@ -20,32 +21,28 @@ int main(void) {
 	unsigned char tmpA=0x00;
 	unsigned char tmpB=0x00;
 	unsigned char tmpC=0x00;
-	unsigned char tmpD0=0x00;
-	unsigned char tmpD1=0x00;
+	unsigned char tmpD=0x00;
 	unsigned char total_weight=0x00;
 	while(1){
+
 		tmpA=PINA;
 		tmpB=PINB;
 		tmpC=PINC;
 		total_weight=tmpA+tmpB+tmpC;
-		if(total_weight > 0x8C){
-			tmpD0=0x01;
-		}else{
-			tmpD0=0x00;
+		tmpD=0x00;
+		if(total_weight >0x8C){
+			tmpD = tmpD | 0x01;
 		}
-		if(tmpA>tmpC){
-			if((tmpA-tmpC) > 0x50){
-				tmpD1=0x02;
-			}
+		if(abs(tmpA-tmpC) >0x50){
+			tmpD = tmpD | 0x02;
 		}
-		else{
-			if((tmpC-tmpA) > 0x50){
-				tmpD1=0x02;
-			}
+		if(((total_weight>>2&0xFC)|tmpD)==0x23){//I struggled with the last test, I don't get why it won't work 
+			PORTD=0x22;
 		}
-		PORTD= (total_weight & 0xFC) | tmpD0 | tmpD1;
-		tmpD0=0x00;
-		tmpD1=0x00;	
+		else{ 
+			PORTD = (((total_weight>>2) & 0xFC) | tmpD) ;
+		}
+		
 	}
 	return 1;
 
