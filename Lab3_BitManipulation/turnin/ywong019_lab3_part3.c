@@ -19,10 +19,12 @@ int main(void) {
 
 	unsigned char tmpA=0x00;
 	unsigned char tmpC=0x00;
-
+	unsigned char holdA=0x00;
 	while(1){
-		tmpA=PINA;
-		if(tmpA==0x01 ||tmpA==0x02){
+		holdA=PINA&0x70;
+		tmpA=PINA&0x0F;
+		tmpC=0x00;
+		if(tmpA==0x01 || tmpA==0x02){
 			tmpC=0x60;
 		}
 		else if(tmpA==0x03 || tmpA==0x04){
@@ -43,7 +45,10 @@ int main(void) {
 		else{
 			tmpC=0x40;
 		}
-		if((tmpA & 0x30) == 0x30 && (tmpA &0x40)!=0x40){
+		if(holdA==0x30){
+			tmpC= tmpC |0x80;
+		}
+		if((tmpA&0x30) == 0x30 && (tmpA&0x40)!=0x40){
 			tmpC = tmpC | 0x80;
 		}
 		PORTC=tmpC;
