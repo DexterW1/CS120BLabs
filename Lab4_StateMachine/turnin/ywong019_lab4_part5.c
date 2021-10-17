@@ -1,0 +1,112 @@
+/*      Author: Yiu Ming Wong
+ *  Partner(s) Name: 
+ *      Lab Section: 021
+ *      Assignment: Lab #4  Exercise #1
+	* Exercise Description: [optional - include for your own benefit]
+ *
+ *      I acknowledge all content contained herein, excluding template or example
+ *      code, is my own original work.
+ */
+#include <avr/io.h>
+#ifdef _SIMULATE_
+#include "simAVRHeader.h"
+#endif
+
+enum States {Start,InitialValues,Combo,Reset_Combo,Locked,Unlocked}state;
+unsigned char tmpArr[4]= {0x04,0x01,0x02,0x01};
+unsigned char i = 0x00;
+void Tick(){
+	unsigned char tmpA=PINA&0x87;
+        switch(state){
+                case Start:
+                        state=InitialValues;
+                        break;
+                case InitialValues:
+			if(tmpA==tmpArr[i]){
+				state = Combo;
+			}
+			else if(tmpA==0x00){
+				state = InitialValues;
+			}
+			else if(tmpA ==0x80){
+				state =Locked;
+			}
+			else{
+				state = Reset_Combo;
+			}
+			break;
+		case Combo:		
+			if(tmpA==0x00){
+				i++;
+				state = InitialValues;
+			}
+			else if( i == 3 && PORTB==0x01){
+				state = Locked;
+			}
+			else if(i ==3){
+				state = Unlocked;
+			}
+			else{
+				state = Combo;
+			}
+			
+			break;
+		case Unlocked:
+			if((tmpA&0x07) ==0x00){
+				state = InitialValues;
+				i=0;
+			}
+			else{
+				state = Unlocked;
+			}
+			break;
+		case Locked:
+			if(tmpA==0x80){
+				state = Locked;
+			}
+			else{
+				state = InitialValues;
+				i=0;
+			}
+			break;
+		case Reset_Combo:
+			state = InitialValues;
+			i=0x00;
+			break;
+                default:
+			state = Start;
+                        break;
+        }
+        switch(state){
+                case Start:
+			PORTB = 0x00;
+                        break;
+                case InitialValues:
+                        break;
+                case Combo:
+                        break;
+		case Unlocked:
+			PORTB=0x01;
+			break;
+		case Locked:
+			PORTB=0x00;
+			break;
+                case Reset_Combo:
+                        break;
+                default:
+			PORTB = 0x00;
+                        break;
+        }
+}
+
+
+int main(void) {
+    /* Insert DDR and PORT initializations */
+        DDRA= 0x00; PORTA=0xFF;
+        DDRC= 0xFF; PORTC= 0x00;
+    /* Insert your solution below */
+    while (1) {
+        Tick();
+    }
+    return 1;
+}
