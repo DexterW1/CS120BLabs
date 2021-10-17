@@ -1,12 +1,12 @@
-
-/*      Author: Yiu Ming Wong
- *  Partner(s) Name: 
- *      Lab Section: 021
- *      Assignment: Lab #5  Exercise #2
- *      Exercise Description: [optional - include for your own benefit]
+/* Author: Yiu Ming Wong 
+* Lab Section: 021
+ * Assignment: Lab #5  Exercise #2
+ * Exercise Description: [optional - include for your own benefit]
  *
- *      I acknowledge all content contained herein, excluding template or example
- *      code, is my own original work.
+ * I acknowledge all content contained herein, excluding template or example
+ * code, is my own original work.
+ *
+ *  Demo Link: https://drive.google.com/file/d/1LAM2UjQ6TU1PqQsLeLs27X9jUhT_klpq/view?usp=sharing
  */
 #include <avr/io.h>
 #ifdef _SIMULATE_
