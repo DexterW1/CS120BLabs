@@ -1,12 +1,12 @@
 /* Author: Yiu Ming Wong  
 * Lab Section: 021
- * Assignment: Lab #6  Exercise #2
+ * Assignment: Lab #7  Exercise #2
  * Exercise Description: [optional - include for your own benefit]
  *
  * I acknowledge all content contained herein, excluding template or example
  * code, is my own original work.
  *
- *  Demo Link: https://drive.google.com/file/d/12O605J8VPLDOCO7qPBVv25wFGUMTIv7N/view?usp=sharing
+ *  Demo Link: https://drive.google.com/file/d/1U0T5RZkGvQeeQnuGXCncFpP9e4cHQ_z6/view?usp=sharing
  */
 #include <avr/io.h>
 #include <avr/interrupt.h>
