@@ -10,6 +10,7 @@
  *	Demo Link: https://drive.google.com/file/d/1KYBTZ4fXATsSRRY2VNpa4MIlHAeH4AkL/view?usp=sharing
  */
 #include <avr/io.h>
+#include <stdbool.h>
 #include <avr/interrupt.h>
 #include "io.h"
 #include <util/delay.h>
@@ -19,7 +20,10 @@
 #include "simAVRHeader.h"
 #endif
 unsigned short playerpos;
-unsigned short prevplayerpos;
+bool checkwin = false;
+unsigned short win_num;
+unsigned short prevplayerpos=9999;
+int *collisionarr;
 const int lednum[8][8]={
 	{0,1,2,3,4,5,6,7},
 	{8,9,10,11,12,13,14,15},
@@ -32,20 +36,43 @@ const int lednum[8][8]={
 	
 };
 const char level1[8][8]={
-	{'#','*','#','@','@','@','#','@'},
-	{'@','@','#','@','#','@','#','@'},
-	{'@','#','#','@','#','@','@','#'},
-	{'@','@','@','@','#','#','@','@'},
-	{'#','@','#','#','#','@','@','#'},
-	{'@','@','#','@','#','@','#','#'},
-	{'@','#','#','@','#','@','@','@'},
-	{'@','@','@','@','#','@','#','!'}
+        {'#','*','#','@','@','@','#','@'},
+        {'@','@','#','@','#','@','#','@'},
+        {'@','#','#','@','#','@','@','#'},
+        {'@','@','@','@','#','#','@','@'},
+        {'#','@','#','#','#','@','@','#'},
+        {'@','@','#','@','#','@','#','#'},
+        {'@','#','#','@','#','@','@','@'},
+        {'@','@','@','@','#','@','#','!'}
 };
+int * collision(){
+	static int arr[63];
+	int counter = 0;
+	for(int i=0; i<8;i++){
+		for(int j=0; j<8;j++){
+			if(level1[i][j]=='#'){
+				arr[counter]=lednum[i][j];
+				counter++;
+			}
+		}
+	}
+	return arr;
+
+}
+bool collisionExist(int arr[],int target){
+	for(int i=0; i<63;i++){
+		if(target==arr[i]){
+			return true;
+		}
+	}
+	return false;
+}
 void printlevel(){
 	for(int i=0; i<8;i++){
 		for(int j=0; j<8;j++){
 			if(level1[i][j]=='#'){
 				ld_setled(0,lednum[i][j],1);
+
 			}
 			else if(level1[i][j]=='*'){
 				playerpos=lednum[i][j];
@@ -56,9 +83,36 @@ void printlevel(){
 			}
 			else if(level1[i][j]=='!'){
 				ld_setled(0,lednum[i][j],1);
+				win_num=lednum[i][j];
 			}
 		}
 	}
+}
+void printlevelOff(){
+        for(int i=0; i<8;i++){
+                for(int j=0; j<8;j++){
+                        if(level1[i][j]=='#'){
+                                ld_setled(0,lednum[i][j],0);
+
+                        }
+                }
+        }
+
+}
+void LightAll(){
+	ld_resetmatrix(1);
+	ld_resetmatrix(0);
+	for(int i=0; i<8;i++){
+		for(int j=0; j<8;j++){
+			ld_setled(0,lednum[i][j],1);
+		}
+	}
+}
+void BlinkWinOn(){
+	ld_setled(0,win_num,0);
+}
+void BlinkWinOff(){
+	ld_setled(0,win_num,1);
 }
 void InitADC(void)
 {
@@ -73,17 +127,26 @@ uint16_t readadc(uint8_t ch)
     while((ADCSRA)&(1<<ADSC));  
     return(ADC);       
 }
-enum MovePlayerStates{BeginMove,MoveInit,Print}Movestate;
+enum MovePlayerStates{BeginMove,MoveInit,Print,Winner}Movestate;
 void MoveTick(){
+	unsigned int time_count =0;
 	switch(Movestate){
 		case BeginMove:
 			Movestate=MoveInit;
 			break;
 		case MoveInit:
-			Movestate=Print;
+			if(playerpos == win_num){
+				Movestate = Winner;
+			}
+			else{
+				Movestate=Print;
+			}
 			break;
 		case Print:
 			Movestate=MoveInit;
+			break;
+		case Winner:
+			Movestate = Winner;
 			break;
 		default:
 			break;
@@ -93,10 +156,15 @@ void MoveTick(){
 			
 			break;
 		case MoveInit:
+			ld_setled(0,playerpos,0);
 			break;
 		case Print:
 			ld_setled(0,prevplayerpos,0);
 			ld_setled(0,playerpos,1);
+			break;
+		case Winner:
+			checkwin=true;
+			LightAll();
 			break;
 		default:
 			break;
@@ -107,6 +175,7 @@ enum DirectionStates{BeginDirections,Init,Up,Down,Left,Right,NoInput,Released}Di
 void DirectionTick(){
 	x=readadc(0);
 	y=readadc(1);
+	collisionarr = collision();
 	switch(Directionstate){
 		case BeginDirections:
 			Directionstate = Init;
@@ -162,25 +231,25 @@ void DirectionTick(){
 		case Init:
 			break;
 		case Up:
-			if(playerpos>7){
+			if(playerpos>7 && !collisionExist(collisionarr,playerpos-8)){
 				prevplayerpos=playerpos;
 				playerpos-=8;
 			}
 			break;
 		case Down:
-			if(playerpos<56){
+			if(playerpos<56&& !collisionExist(collisionarr,playerpos+8)){
 				prevplayerpos=playerpos;
 				playerpos+=8;
 			}
 			break;
 		case Left:
-			if(playerpos!=0 || playerpos!=8 || playerpos!=16||playerpos!=24||playerpos!=32||playerpos!=40||playerpos!=48||playerpos!=56){
+			if(playerpos!=0 && playerpos!=8 && playerpos!=16&&playerpos!=24&&playerpos!=32&&playerpos!=40&&playerpos!=48&&playerpos!=56&&!collisionExist(collisionarr,playerpos-1)){
 				prevplayerpos=playerpos;
 				playerpos-=1;
 			}
 			break;
 		case Right:
-			if(playerpos!=7||playerpos!=15||playerpos!=23||playerpos!=31||playerpos!=39||playerpos!=47||playerpos!=55||playerpos!=63){
+			if(playerpos!=7&&playerpos!=15&&playerpos!=23&&playerpos!=31&&playerpos!=39&&playerpos!=47&&playerpos!=55&&playerpos!=63&&!collisionExist(collisionarr,playerpos+1)){
 				prevplayerpos=playerpos;
 				playerpos+=1;
 			}
@@ -202,6 +271,11 @@ int main(void) {
 	DDRC= 0xFF; PORTC = 0x00;
 	DDRD= 0xFF; PORTD = 0x00;
 	char buffer[32];
+	const unsigned long timeperiod = 150;
+	unsigned long blinkwin_on =0;
+	unsigned long blinkwin_off =0;
+	unsigned long printlevel_on=0;
+	unsigned long printlevel_off=0;
 	LCD_init();
 	InitADC();
 	ld_init();
@@ -210,14 +284,24 @@ int main(void) {
 	printlevel();
     /* Insert your solution below */
     while (1){
-	    x=readadc(0);
-	    y=readadc(1);
-	    sprintf(buffer,"X=%d            Y=%d",x,y);
-	    LCD_DisplayString(1,buffer);
 	    DirectionTick();
 	    MoveTick();
+	    if(blinkwin_on >= 600 && checkwin==false){
+		BlinkWinOn();
+		blinkwin_on=0;
+	    }
+	    if(blinkwin_off >=1200 && checkwin==false){
+		BlinkWinOff();
+		blinkwin_off=0;
+	    }
+	    if(printlevel_off>=10000 && checkwin== false){
+		printlevelOff();
+	    }
 	    while(!TimerFlag);
 	    TimerFlag=0;
+	    blinkwin_on+=timeperiod;
+	    blinkwin_off+=timeperiod;
+	    printlevel_off+=timeperiod;
     }
     return 1;
 }
