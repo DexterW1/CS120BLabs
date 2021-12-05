@@ -386,12 +386,13 @@ void DirectionTick(){
 			Directionstate = Init;
 			break;
 		case Released:
-			if(y>1000 || y<20 || x>1000 || x<20){
+			/*if(y>1000 || y<20 || x>1000 || x<20){
 				Directionstate = Released;
 			}
 			else{
 				Directionstate = Init;
-			}
+			}*/
+			Directionstate = Init;
 		default:
 			break;
 	}
