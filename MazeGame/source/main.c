@@ -20,6 +20,9 @@
 #include "simAVRHeader.h"
 #endif
 unsigned short playerpos;
+int reset_button = 0;
+int score = 0;
+int reset_curr_button =0;
 bool checkwin = false;
 int check_level = 0;
 int current_level = 0;
@@ -163,21 +166,68 @@ uint16_t readadc(uint8_t ch)
     while((ADCSRA)&(1<<ADSC));  
     return(ADC);       
 }
-enum LCDScoreStates{BeginLCD,LCDInit,LCDUpdate,LCDWinner}LCDstate;
-enum MovePlayerStates{BeginMove,MoveInit,Print,Winner,NextLevel}Movestate;
+enum LCDScoreStates{BeginLCD,LCDInit,LCDUpdate,LCDWinner,LCDLevelUpdate,LCDPrint}LCDstate;
+void LCDTick(){
+	char buffer[32];
+	switch(LCDstate){
+		case BeginLCD:
+			LCDstate = LCDInit;
+			break;
+		case LCDInit:
+			if(playerpos==win_num){
+				LCDstate = LCDPrint;
+			}
+			else if(
+			break;
+		case LCDPrint:
+			LCDstate=LCDInit;
+			break;
+		case LCDUpdate:
+			break;
+		case LCDWinner:
+			break;
+		case LCDLevelUpdate:
+			break;
+		default:
+			break;
+	}
+
+        switch(LCDstate){
+                case BeginLCD:
+                        break;
+                case LCDInit:
+			score+=1;
+                        break;
+                case LCDUpdate:
+                        break;
+                case LCDWinner:
+                        break;
+		case LCDLevelUpdate:
+			break;
+		default:
+			break;
+        }
+
+
+}
+enum MovePlayerStates{BeginMove,MoveInit,Print,Winner,NextLevel,Reset}Movestate;
 void MoveTick(){
 	unsigned char tmpA = ~PINA&0x08;
+	unsigned char tmp= ~PINA&0x10;
 	unsigned int time_count =0;
 	switch(Movestate){
 		case BeginMove:
 			Movestate=MoveInit;
 			break;
 		case MoveInit:
-			if(playerpos == win_num){
+			if(playerpos == win_num && current_level != 4){
 				Movestate = NextLevel;
 			}
 			else if (current_level==4){
 				Movestate = Winner;
+			}
+			else if(tmp==0x10){
+				Movestate = Reset;
 			}
 			else{
 				Movestate=Print;
@@ -189,12 +239,22 @@ void MoveTick(){
 		case NextLevel:
 			Movestate = MoveInit;
 			break;
+		case Reset:
+			if(tmp==0x10){
+				Movestate = Reset;
+			}
+			else{
+				Movestate = MoveInit;
+			}
+			break;
 		case Winner:
 			if(tmpA==0){
 				Movestate = Winner;
 				LightAll();
 			}
 			else{
+				current_level =0;
+				reset_button = 1;
 				Movestate = MoveInit;
 			}
 			break;
@@ -203,7 +263,6 @@ void MoveTick(){
 	}
 	switch(Movestate){
 		case BeginMove:
-			
 			break;
 		case MoveInit:
 			ld_setled(0,playerpos,0);
@@ -213,11 +272,13 @@ void MoveTick(){
 			ld_setled(0,playerpos,1);
 			break;
 		case Winner:
-			checkwin=true;
 			break;
 		case NextLevel:
 			checkwin  = true;
 			current_level++;
+			break;
+		case Reset:
+			reset_curr_button=1;
 			break;
 		default:
 			break;
@@ -323,7 +384,6 @@ int main(void) {
 	DDRB= 0x00; PORTB = 0xFF;
 	DDRC= 0xFF; PORTC = 0x00;
 	DDRD= 0xFF; PORTD = 0x00;
-	char buffer[32];
 	const unsigned long timeperiod = 150;
 	unsigned long blinkwin_on =0;
 	unsigned long blinkwin_off =0;
@@ -341,11 +401,16 @@ int main(void) {
     while (1){
 	    DirectionTick();
 	    MoveTick();
-	    if(checkwin==true){
-		less_time+=150;
+	    if(checkwin==true||reset_button==1){
+		reset_button=0;;
 		printlevel();
 		checkwin=false;
-		printlevel_off=less_time;
+		printlevel_off=0;
+	    }
+	    if(reset_curr_button==1){
+		printlevel();
+		printlevel_off=0;
+		reset_curr_button=0;
 	    }
 	    if(blinkwin_on >= 600 && checkwin==false){
 		BlinkWinOn();
