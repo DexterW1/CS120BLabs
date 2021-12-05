@@ -21,6 +21,8 @@
 #endif
 unsigned short playerpos;
 bool checkwin = false;
+int check_level = 0;
+int current_level = 0;
 unsigned short win_num;
 unsigned short prevplayerpos=9999;
 int *collisionarr;
@@ -35,22 +37,56 @@ const int lednum[8][8]={
 	{56,57,58,59,60,61,62,63}
 	
 };
-const char level1[8][8]={
-        {'#','*','#','@','@','@','#','@'},
-        {'@','@','#','@','#','@','#','@'},
-        {'@','#','#','@','#','@','@','#'},
-        {'@','@','@','@','#','#','@','@'},
-        {'#','@','#','#','#','@','@','#'},
-        {'@','@','#','@','#','@','#','#'},
-        {'@','#','#','@','#','@','@','@'},
-        {'@','@','@','@','#','@','#','!'}
+const char level[4][8][8]={
+        {
+                {'#','*','#','@','@','@','#','@'},
+                {'@','@','#','@','#','@','#','@'},
+                {'@','#','#','@','#','@','@','#'},
+                {'@','@','@','@','#','#','@','@'},
+                {'#','@','#','#','#','@','@','#'},
+                {'@','@','#','@','#','@','#','#'},
+                {'@','#','#','@','#','@','@','@'},
+                {'@','@','@','@','#','@','#','!'}
+        },
+        {
+                {'*','#','@','@','@','#','#','!'},
+                {'@','#','@','#','@','#','#','@'},
+                {'@','@','@','#','#','#','#','@'},
+                {'#','@','@','#','@','#','#','@'},
+                {'@','@','@','#','@','@','@','@'},
+                {'@','#','@','#','@','#','@','#'},
+                {'@','#','@','@','@','#','@','#'},
+                {'@','@','@','@','@','#','@','#'}
+        },
+        {
+                {'#','@','@','@','@','@','@','#'},
+		{'@','@','#','#','#','#','@','@'},
+		{'@','#','@','@','#','#','@','#'},
+		{'@','@','@','*','#','#','@','#'},
+		{'#','#','#','#','@','@','@','@'},
+		{'@','@','@','#','@','#','#','@'},
+		{'@','#','@','#','#','@','@','@'},
+		{'!','#','@','@','@','@','#','@'}
+        },
+	{
+		{'@','@','@','@','#','@','#','*'},
+		{'#','@','#','@','#','@','#','@'},
+		{'@','@','#','@','#','@','@','@'},
+		{'@','#','#','!','#','#','#','@'},
+		{'@','@','#','#','#','#','@','@'},
+		{'@','#','@','@','@','#','@','#'},
+		{'@','@','@','#','@','@','@','@'},
+		{'#','@','@','#','@','@','#','@'},
+	}
+
 };
+
 int * collision(){
 	static int arr[63];
 	int counter = 0;
 	for(int i=0; i<8;i++){
 		for(int j=0; j<8;j++){
-			if(level1[i][j]=='#'){
+			if(level[current_level][i][j]=='#'){
 				arr[counter]=lednum[i][j];
 				counter++;
 			}
@@ -70,18 +106,18 @@ bool collisionExist(int arr[],int target){
 void printlevel(){
 	for(int i=0; i<8;i++){
 		for(int j=0; j<8;j++){
-			if(level1[i][j]=='#'){
+			if(level[current_level][i][j]=='#'){
 				ld_setled(0,lednum[i][j],1);
 
 			}
-			else if(level1[i][j]=='*'){
+			else if(level[current_level][i][j]=='*'){
 				playerpos=lednum[i][j];
 				ld_setled(0,lednum[i][j],1);
 			}
-			else if(level1[i][j]=='@'){
+			else if(level[current_level][i][j]=='@'){
 				ld_setled(0,lednum[i][j],0);
 			}
-			else if(level1[i][j]=='!'){
+			else if(level[current_level][i][j]=='!'){
 				ld_setled(0,lednum[i][j],1);
 				win_num=lednum[i][j];
 			}
@@ -91,7 +127,7 @@ void printlevel(){
 void printlevelOff(){
         for(int i=0; i<8;i++){
                 for(int j=0; j<8;j++){
-                        if(level1[i][j]=='#'){
+                        if(level[current_level][i][j]=='#'){
                                 ld_setled(0,lednum[i][j],0);
 
                         }
@@ -146,7 +182,7 @@ void MoveTick(){
 			Movestate=MoveInit;
 			break;
 		case Winner:
-			Movestate = Winner;
+			Movestate = MoveInit;
 			break;
 		default:
 			break;
@@ -164,7 +200,7 @@ void MoveTick(){
 			break;
 		case Winner:
 			checkwin=true;
-			LightAll();
+			current_level++;
 			break;
 		default:
 			break;
@@ -276,6 +312,8 @@ int main(void) {
 	unsigned long blinkwin_off =0;
 	unsigned long printlevel_on=0;
 	unsigned long printlevel_off=0;
+	unsigned int prev_level = current_level;
+	unsigned int less_time = 0;
 	LCD_init();
 	InitADC();
 	ld_init();
@@ -286,6 +324,12 @@ int main(void) {
     while (1){
 	    DirectionTick();
 	    MoveTick();
+	    if(checkwin==true){
+		less_time+=150;
+		printlevel();
+		checkwin=false;
+		printlevel_off=less_time;
+	    }
 	    if(blinkwin_on >= 600 && checkwin==false){
 		BlinkWinOn();
 		blinkwin_on=0;
