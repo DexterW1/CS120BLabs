@@ -19,13 +19,17 @@
 #ifdef _SIMULATE_
 #include "simAVRHeader.h"
 #endif
+char buffer[32];
+char results[32];
+bool intial_level=true;
 unsigned short playerpos;
 int reset_button = 0;
-int score = 0;
+int score = 1000;
 int reset_curr_button =0;
 bool checkwin = false;
+bool checklevel=false;
 int check_level = 0;
-int current_level = 0;
+int current_level = 3;
 unsigned short win_num;
 unsigned short prevplayerpos=9999;
 int *collisionarr;
@@ -166,27 +170,52 @@ uint16_t readadc(uint8_t ch)
     while((ADCSRA)&(1<<ADSC));  
     return(ADC);       
 }
-enum LCDScoreStates{BeginLCD,LCDInit,LCDUpdate,LCDWinner,LCDLevelUpdate,LCDPrint}LCDstate;
+int print_check=0;
+enum LCDScoreStates{BeginLCD,LCDInit,LCDUpdate,LCDWinner,LCDReset,LCDPrint,LCDPenalty}LCDstate;
 void LCDTick(){
-	char buffer[32];
 	switch(LCDstate){
 		case BeginLCD:
 			LCDstate = LCDInit;
 			break;
 		case LCDInit:
 			if(playerpos==win_num){
-				LCDstate = LCDPrint;
+				LCDstate = LCDUpdate;
 			}
-			else if(
+			else if(current_level==0 && intial_level){
+				LCDstate = LCDUpdate;
+			}
+			else if(reset_curr_button==1){
+				LCDstate = LCDPenalty;
+			}
+			else if (checkwin){
+				LCDstate=LCDWinner;
+			}
+			else if((~PINA&0x08)==0x08){
+				LCDstate = LCDReset;
+			}
+			else{
+				LCDstate = LCDInit;
+			}
 			break;
 		case LCDPrint:
 			LCDstate=LCDInit;
 			break;
 		case LCDUpdate:
+			LCDstate=LCDPrint;
+			break;
+		case LCDPenalty:
+			LCDstate=LCDUpdate;
 			break;
 		case LCDWinner:
+			if((~PINA&0x08)==0x00){
+				LCDstate = LCDWinner;
+			}
+			else{
+				LCDstate = LCDReset;
+			}
 			break;
-		case LCDLevelUpdate:
+		case LCDReset:
+			LCDstate=LCDInit;
 			break;
 		default:
 			break;
@@ -196,13 +225,32 @@ void LCDTick(){
                 case BeginLCD:
                         break;
                 case LCDInit:
-			score+=1;
+			if(score>0){
+				score-=1;
+			}
                         break;
                 case LCDUpdate:
+			sprintf(buffer,"Score=%d ",score);
                         break;
                 case LCDWinner:
+			sprintf(buffer,"You Won! Final Score of (%d)",score);
+			if(print_check==0){
+				LCD_DisplayString(1,buffer);
+			}
+			print_check++;
                         break;
-		case LCDLevelUpdate:
+		case LCDPrint:
+			LCD_DisplayString(1,buffer);
+			intial_level=false;
+			break;
+		case LCDReset:
+			intial_level = true;
+			score=1000;
+			print_check=0;
+			LCD_ClearScreen();
+			break;
+		case LCDPenalty:
+			score-=50;
 			break;
 		default:
 			break;
@@ -210,7 +258,7 @@ void LCDTick(){
 
 
 }
-enum MovePlayerStates{BeginMove,MoveInit,Print,Winner,NextLevel,Reset}Movestate;
+enum MovePlayerStates{BeginMove,MoveInit,Print,Winner,NextLevel,Reset,FullReset}Movestate;
 void MoveTick(){
 	unsigned char tmpA = ~PINA&0x08;
 	unsigned char tmp= ~PINA&0x10;
@@ -229,12 +277,18 @@ void MoveTick(){
 			else if(tmp==0x10){
 				Movestate = Reset;
 			}
+			else if(tmpA==0x08){
+				Movestate = FullReset;
+			}
 			else{
 				Movestate=Print;
 			}
 			break;
 		case Print:
 			Movestate=MoveInit;
+			break;
+		case FullReset:
+			Movestate = MoveInit;
 			break;
 		case NextLevel:
 			Movestate = MoveInit;
@@ -250,12 +304,9 @@ void MoveTick(){
 		case Winner:
 			if(tmpA==0){
 				Movestate = Winner;
-				LightAll();
 			}
 			else{
-				current_level =0;
-				reset_button = 1;
-				Movestate = MoveInit;
+				Movestate = FullReset;
 			}
 			break;
 		default:
@@ -272,13 +323,18 @@ void MoveTick(){
 			ld_setled(0,playerpos,1);
 			break;
 		case Winner:
+			checkwin=true;
 			break;
 		case NextLevel:
-			checkwin  = true;
+			checklevel  = true;
 			current_level++;
 			break;
 		case Reset:
 			reset_curr_button=1;
+			break;
+		case FullReset:
+			current_level = 0;
+			reset_button=1;
 			break;
 		default:
 			break;
@@ -401,9 +457,11 @@ int main(void) {
     while (1){
 	    DirectionTick();
 	    MoveTick();
-	    if(checkwin==true||reset_button==1){
+	    LCDTick();
+	    if(checklevel==true||reset_button==1){
 		reset_button=0;;
 		printlevel();
+		checklevel=false;
 		checkwin=false;
 		printlevel_off=0;
 	    }
