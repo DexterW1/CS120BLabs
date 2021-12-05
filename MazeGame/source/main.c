@@ -163,8 +163,10 @@ uint16_t readadc(uint8_t ch)
     while((ADCSRA)&(1<<ADSC));  
     return(ADC);       
 }
-enum MovePlayerStates{BeginMove,MoveInit,Print,Winner}Movestate;
+enum LCDScoreStates{BeginLCD,LCDInit,LCDUpdate,LCDWinner}LCDstate;
+enum MovePlayerStates{BeginMove,MoveInit,Print,Winner,NextLevel}Movestate;
 void MoveTick(){
+	unsigned char tmpA = ~PINA&0x08;
 	unsigned int time_count =0;
 	switch(Movestate){
 		case BeginMove:
@@ -172,6 +174,9 @@ void MoveTick(){
 			break;
 		case MoveInit:
 			if(playerpos == win_num){
+				Movestate = NextLevel;
+			}
+			else if (current_level==4){
 				Movestate = Winner;
 			}
 			else{
@@ -181,8 +186,17 @@ void MoveTick(){
 		case Print:
 			Movestate=MoveInit;
 			break;
-		case Winner:
+		case NextLevel:
 			Movestate = MoveInit;
+			break;
+		case Winner:
+			if(tmpA==0){
+				Movestate = Winner;
+				LightAll();
+			}
+			else{
+				Movestate = MoveInit;
+			}
 			break;
 		default:
 			break;
@@ -200,6 +214,9 @@ void MoveTick(){
 			break;
 		case Winner:
 			checkwin=true;
+			break;
+		case NextLevel:
+			checkwin  = true;
 			current_level++;
 			break;
 		default:
