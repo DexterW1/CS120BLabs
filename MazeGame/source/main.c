@@ -9,6 +9,7 @@
  *
  *	Demo Link: https://drive.google.com/file/d/1KYBTZ4fXATsSRRY2VNpa4MIlHAeH4AkL/view?usp=sharing
  */
+#define F_CPU 1000000UL
 #include <avr/io.h>
 #include <stdbool.h>
 #include <avr/interrupt.h>
@@ -164,8 +165,8 @@ void InitADC(void)
 }
 uint16_t readadc(uint8_t ch)
 {
-    ch&=0b00000111;       
-    ADMUX = (ADMUX & 0xf8)|ch;  
+    ch&=0b00001111;       
+    ADMUX = (ADMUX & 0xf0)|ch;  
     ADCSRA|=(1<<ADSC);       
     while((ADCSRA)&(1<<ADSC));  
     return(ADC);       
@@ -260,8 +261,8 @@ void LCDTick(){
 }
 enum MovePlayerStates{BeginMove,MoveInit,Print,Winner,NextLevel,Reset,FullReset}Movestate;
 void MoveTick(){
-	unsigned char tmpA = ~PINA&0x08;
-	unsigned char tmp= ~PINA&0x10;
+	unsigned char tmpA = ~PINA&0x10;
+	unsigned char tmp= ~PINA&0x20;
 	unsigned int time_count =0;
 	switch(Movestate){
 		case BeginMove:
@@ -274,10 +275,10 @@ void MoveTick(){
 			else if (current_level==4){
 				Movestate = Winner;
 			}
-			else if(tmp==0x10){
+			else if(tmp==0x20){
 				Movestate = Reset;
 			}
-			else if(tmpA==0x08){
+			else if(tmpA==0x10){
 				Movestate = FullReset;
 			}
 			else{
@@ -294,7 +295,7 @@ void MoveTick(){
 			Movestate = MoveInit;
 			break;
 		case Reset:
-			if(tmp==0x10){
+			if(tmp==0x20){
 				Movestate = Reset;
 			}
 			else{
